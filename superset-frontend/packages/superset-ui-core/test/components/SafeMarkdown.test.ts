@@ -16,19 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { getOverrideHtmlSchema } from '../../src/components/SafeMarkdown';
 
-import { setCrossFilterFieldValues } from '.';
-
-test('setValues', () => {
-  const from = { setFieldsValue: jest.fn() };
-  const values = {
-    val01: 'val01',
-    val02: 'val02',
-    val03: 'val03',
-    val04: 'val04',
-  };
-  setCrossFilterFieldValues(from as any, values);
-
-  expect(from.setFieldsValue).toBeCalledTimes(1);
-  expect(from.setFieldsValue).toBeCalledWith(values);
+describe('getOverrideHtmlSchema', () => {
+  it('should append the override items', () => {
+    const original = {
+      attributes: {
+        '*': ['size'],
+      },
+      clobberPrefix: 'original-prefix',
+      tagNames: ['h1', 'h2', 'h3'],
+    };
+    const result = getOverrideHtmlSchema(original, {
+      attributes: { '*': ['src'], h1: ['style'] },
+      clobberPrefix: 'custom-prefix',
+      tagNames: ['iframe'],
+    });
+    expect(result.clobberPrefix).toEqual('custom-prefix');
+    expect(result.attributes).toEqual({ '*': ['size', 'src'], h1: ['style'] });
+    expect(result.tagNames).toEqual(['h1', 'h2', 'h3', 'iframe']);
+  });
 });

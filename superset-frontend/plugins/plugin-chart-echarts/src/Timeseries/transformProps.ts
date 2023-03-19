@@ -107,8 +107,9 @@ export default function transformProps(
   } = chartProps;
   const { verboseMap = {} } = datasource;
   const [queryData] = queriesData;
-  const { data = [], label_map: labelMap } =
+  const { data = [], label_map = {} } =
     queryData as TimeseriesChartDataResponseResult;
+
   const dataTypes = getColtypesMapping(queryData);
   const annotationData = getAnnotationData(chartProps);
 
@@ -135,7 +136,10 @@ export default function transformProps(
     showLegend,
     showValue,
     sliceId,
+    sortSeriesType,
+    sortSeriesAscending,
     timeGrainSqla,
+    timeCompare,
     stack,
     tooltipTimeFormat,
     tooltipSortByMetric,
@@ -153,6 +157,17 @@ export default function transformProps(
     zoomable,
   }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
   const refs: Refs = {};
+
+  const labelMap = Object.entries(label_map).reduce((acc, entry) => {
+    if (
+      entry[1].length > groupby.length &&
+      Array.isArray(timeCompare) &&
+      timeCompare.includes(entry[1][0])
+    ) {
+      entry[1].shift();
+    }
+    return { ...acc, [entry[0]]: entry[1] };
+  }, {});
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
   const rebasedData = rebaseForecastDatum(data, verboseMap);
@@ -184,6 +199,8 @@ export default function transformProps(
     stack,
     totalStackedValues,
     isHorizontal,
+    sortSeriesType,
+    sortSeriesAscending,
   });
   const showValueIndexes = extractShowValueIndexes(rawSeries, {
     stack,
@@ -405,7 +422,7 @@ export default function transformProps(
           forecastValue.sort((a, b) => b.data[yIndex] - a.data[yIndex]);
         }
 
-        const rows: Array<string> = [`${tooltipFormatter(xValue)}`];
+        const rows: string[] = [];
         const forecastValues: Record<string, ForecastValue> =
           extractForecastValuesFromTooltipParams(forecastValue, isHorizontal);
 
@@ -422,6 +439,10 @@ export default function transformProps(
             rows.push(`<span style="opacity: 0.7">${content}</span>`);
           }
         });
+        if (stack) {
+          rows.reverse();
+        }
+        rows.unshift(`${tooltipFormatter(xValue)}`);
         return rows.join('<br />');
       },
     },
