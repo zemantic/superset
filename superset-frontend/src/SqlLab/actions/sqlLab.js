@@ -32,6 +32,8 @@ import {
 } from 'src/components/MessageToasts/actions';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import COMMON_ERR_MESSAGES from 'src/utils/errorMessages';
+import { LOG_ACTIONS_SQLLAB_FETCH_FAILED_QUERY } from 'src/logger/LogUtils';
+import { logEvent } from 'src/logger/actions';
 import { newQueryTabName } from '../utils/newQueryTabName';
 
 export const RESET_STATE = 'RESET_STATE';
@@ -48,8 +50,6 @@ export const EXPAND_TABLE = 'EXPAND_TABLE';
 export const COLLAPSE_TABLE = 'COLLAPSE_TABLE';
 export const QUERY_EDITOR_SETDB = 'QUERY_EDITOR_SETDB';
 export const QUERY_EDITOR_SET_SCHEMA = 'QUERY_EDITOR_SET_SCHEMA';
-export const QUERY_EDITOR_SET_SCHEMA_OPTIONS =
-  'QUERY_EDITOR_SET_SCHEMA_OPTIONS';
 export const QUERY_EDITOR_SET_TABLE_OPTIONS = 'QUERY_EDITOR_SET_TABLE_OPTIONS';
 export const QUERY_EDITOR_SET_TITLE = 'QUERY_EDITOR_SET_TITLE';
 export const QUERY_EDITOR_SET_AUTORUN = 'QUERY_EDITOR_SET_AUTORUN';
@@ -268,6 +268,26 @@ export function queryFailed(query, msg, link, errors) {
             postPayload: { latest_query_id: query.id },
           })
         : Promise.resolve();
+
+    const eventData = {
+      has_err: true,
+      start_offset: query.startDttm,
+      ts: new Date().getTime(),
+    };
+    errors?.forEach(({ error_type: errorType, extra }) => {
+      const messages = extra?.issue_codes.map(({ message }) => message) || [
+        errorType,
+      ];
+      messages.forEach(message => {
+        dispatch(
+          logEvent(LOG_ACTIONS_SQLLAB_FETCH_FAILED_QUERY, {
+            ...eventData,
+            error_type: errorType,
+            error_details: message,
+          }),
+        );
+      });
+    });
 
     return (
       sync
@@ -922,10 +942,6 @@ export function queryEditorSetSchema(queryEditor, schema) {
         ),
       );
   };
-}
-
-export function queryEditorSetSchemaOptions(queryEditor, options) {
-  return { type: QUERY_EDITOR_SET_SCHEMA_OPTIONS, queryEditor, options };
 }
 
 export function queryEditorSetTableOptions(queryEditor, options) {
